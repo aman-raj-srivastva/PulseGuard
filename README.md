@@ -45,6 +45,46 @@ npm start
 
 ---
 
+## 🧪 Live Testing & Sandbox Simulator
+
+We provide a live cloud simulator to test PulseGuard's detection and alerting capabilities without needing real server outages.
+
+### 1. Test Site Endpoints
+* **Simulated Website URL**: `https://pulse-guard-simulator.vercel.app/?view=site`
+* **Control Dashboard**: [https://pulse-guard-simulator.vercel.app/](https://pulse-guard-simulator.vercel.app/) or [https://pulse-guard-simulator.vercel.app/control](https://pulse-guard-simulator.vercel.app/control)
+
+### 2. Recommended Test Configuration in PulseGuard
+To test instant detection and recovery without waiting:
+1. Open the PulseGuard dashboard at `http://localhost:3000` and click **"+ Add Website"**.
+2. Configure with the following settings:
+   - **Website Name:** `PulseGuard Sandbox`
+   - **Base URL:** `https://pulse-guard-simulator.vercel.app/?view=site`
+   - **Check Interval:** `1 minute`
+   - **Consecutive Threshold (Frequency):** `1` *(triggers alert on the very first failure)*
+   - **Pages to Monitor:**
+     - `/` (Homepage)
+     - `/wp-login.php` (Login)
+     - `/wp-json/` (REST API)
+   - **Notification Channels:** Check Telegram, Email, and/or WhatsApp.
+3. Click **"Save Website"**.
+
+### 3. Simulating Outages & Scenarios
+Open the [Simulator Control Dashboard](https://pulse-guard-simulator.vercel.app/control) and switch between test modes with one click:
+
+| Mode | What It Simulates | Expected Result in PulseGuard |
+|------|-------------------|--------------------------------|
+| 🟢 **Normal / Healthy** | Clean HTTP 200 OK | Status: **HEALTHY**, recovers site and sends recovery alert |
+| 🟡 **Hostinger Coming Soon** | HTTP 200 with Hostinger placeholder | Flags soft failure / deep content detection |
+| 🔴 **HTTP 500 Server Error** | PHP crash / Server Error | Status: **DOWN**, triggers instant outage notification |
+| 💥 **Database Error** | "Error establishing database connection" | Status: **DOWN**, logs database connection failure |
+| ⏳ **Timeout (10s)** | Connection hangs for 10 seconds | Status: **DOWN**, logs timeout failure |
+| 🚫 **HTTP 404 Not Found** | Missing subpage / broken link | Flags affected page, tracks consecutive failure |
+
+> **Tip:** Click the **"Check Now"** button on the PulseGuard dashboard to run an immediate inspection cycle instead of waiting for the 1-minute schedule!
+
+---
+
+
 ## ⚙️ Alert Channels Setup Guide
 
 Click **"Alert Channels"** in the top-right navbar:

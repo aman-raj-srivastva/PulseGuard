@@ -1,37 +1,74 @@
+const https = require('https');
 const nodemailer = require('nodemailer');
 const storage = require('./storage');
+
+function postJson(hostname, path, payload) {
+  return new Promise((resolve, reject) => {
+    const data = JSON.stringify(payload);
+    const options = {
+      hostname,
+      port: 443,
+      path,
+      method: 'POST',
+      family: 4, // Guarantee IPv4 routing to prevent Linux IPv6 timeouts
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(data)
+      },
+      timeout: 10000
+    };
+
+    const req = https.request(options, (res) => {
+      let body = '';
+      res.on('data', chunk => body += chunk);
+      res.on('end', () => {
+        try {
+          const parsed = JSON.parse(body);
+          resolve(parsed);
+        } catch (e) {
+          resolve({ ok: false, description: `HTTP ${res.statusCode}: ${body}` });
+        }
+      });
+    });
+
+    req.on('timeout', () => {
+      req.destroy();
+      reject(new Error('Connection timed out to Telegram API'));
+    });
+
+    req.on('error', (err) => {
+      reject(err);
+    });
+
+    req.write(data);
+    req.end();
+  });
+}
 
 class Notifier {
   constructor() {}
 
-  // 1. Telegram Dispatcher
+  // 1. Telegram Dispatcher (Rock-Solid IPv4)
   async sendTelegram(message, customSettings = null) {
     const settings = customSettings || storage.getSettings().telegram;
     if (!settings || !settings.botToken || !settings.chatId) {
       throw new Error('Telegram Bot Token or Chat ID is missing');
     }
 
-    const url = `https://api.telegram.org/bot${settings.botToken}/sendMessage`;
+    const path = `/bot${settings.botToken}/sendMessage`;
     const payload = {
       chat_id: settings.chatId,
       text: message,
       parse_mode: 'HTML'
     };
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
+    let data = await postJson('api.telegram.org', path, payload);
 
-    let data = await response.json();
-    
     // Auto-handle supergroup migration
     if (!data.ok && data.parameters && data.parameters.migrate_to_chat_id) {
       const newChatId = data.parameters.migrate_to_chat_id;
       console.log(`[TELEGRAM] Group upgraded to supergroup. Migrating Chat ID: ${settings.chatId} -> ${newChatId}`);
-      
-      // Update saved settings if modifying global config
+
       if (!customSettings) {
         const currentSettings = storage.getSettings();
         if (currentSettings.telegram) {
@@ -40,14 +77,8 @@ class Notifier {
         }
       }
 
-      // Retry with new supergroup chat ID
       payload.chat_id = newChatId;
-      const retryRes = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      data = await retryRes.json();
+      data = await postJson('api.telegram.org', path, payload);
       if (data.ok) {
         data.migratedChatId = newChatId;
         return data;
