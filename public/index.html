@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PulseGuard • Autonomous Website & Uptime Monitor</title>
+  <meta name="description" content="Autonomous multi-website and multi-page uptime monitor with Telegram, Email, and WhatsApp instant alerts.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="style.css?v=3.0">
+</head>
+<body>
+  <!-- Ambient background glow effects -->
+  <div class="ambient-glow glow-1"></div>
+  <div class="ambient-glow glow-2"></div>
+  <div class="ambient-glow glow-3"></div>
+
+  <!-- AUTHENTICATION LOGIN OVERLAY -->
+  <div class="login-overlay" id="loginScreen">
+    <div class="login-card">
+      <div class="login-header">
+        <div class="login-logo">
+          <i class="fa-solid fa-shield-halved"></i>
+        </div>
+        <h2>Pulse<span>Guard</span></h2>
+        <p>Enter your credentials to access the monitor</p>
+      </div>
+
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="loginUsername"><i class="fa-solid fa-user"></i> Username</label>
+          <input type="text" id="loginUsername" class="form-input" placeholder="Enter username" required autofocus>
+        </div>
+
+        <div class="form-group">
+          <label for="loginPassword"><i class="fa-solid fa-lock"></i> Password</label>
+          <input type="password" id="loginPassword" class="form-input" placeholder="••••••••" required>
+        </div>
+
+        <div id="loginError" class="login-error-msg" style="display: none;">
+          <i class="fa-solid fa-circle-exclamation"></i> <span>Invalid username or password</span>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100" id="btnLoginSubmit">
+          <i class="fa-solid fa-right-to-bracket"></i> Login to Dashboard
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <div class="app-wrapper" id="dashboardApp" style="display: none;">
+    <!-- TOP NAVIGATION BAR -->
+    <header class="navbar">
+      <div class="brand">
+        <div class="brand-logo">
+          <i class="fa-solid fa-tower-broadcast pulse-icon"></i>
+        </div>
+        <div class="brand-text">
+          <h1>Pulse<span>Guard</span></h1>
+          <p class="tagline">Autonomous Multi-Page Website Monitor</p>
+        </div>
+      </div>
+
+      <div class="nav-controls">
+        <div class="engine-badge" id="engineStatus">
+          <span class="pulse-dot active"></span>
+          <span>Engine Active (5m)</span>
+        </div>
+        <button class="btn btn-outline" id="btnCheckAll" title="Run instant checks on all websites">
+          <i class="fa-solid fa-rotate"></i>
+          <span>Check All Now</span>
+        </button>
+        <button class="btn btn-primary" id="btnAddSite">
+          <i class="fa-solid fa-plus"></i>
+          <span>Add Website</span>
+        </button>
+        <button class="btn btn-glass" id="btnOpenSettings" title="Configure Alert Notifications & Credentials">
+          <i class="fa-solid fa-bell"></i>
+          <span>Alerts & Settings</span>
+        </button>
+        
+        <!-- USER / LOGOUT -->
+        <div class="user-pill">
+          <i class="fa-solid fa-circle-user text-blue"></i>
+          <span id="navUsername">admin</span>
+          <button class="btn-logout" id="btnLogout" title="Logout">
+            <i class="fa-solid fa-arrow-right-from-bracket"></i>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- METRICS & HERO STATS -->
+    <section class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon-wrapper bg-emerald">
+          <i class="fa-solid fa-shield-halved"></i>
+        </div>
+        <div class="stat-content">
+          <span class="stat-label">Overall Uptime</span>
+          <h2 class="stat-value" id="statUptime">100%</h2>
+          <span class="stat-meta text-emerald"><i class="fa-solid fa-arrow-trend-up"></i> All systems tracked</span>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon-wrapper bg-blue">
+          <i class="fa-solid fa-globe"></i>
+        </div>
+        <div class="stat-content">
+          <span class="stat-label">Monitored Websites</span>
+          <h2 class="stat-value" id="statTotalSites">9</h2>
+          <span class="stat-meta text-blue" id="statTotalPages"><i class="fa-solid fa-layer-group"></i> 27 subpages checked</span>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon-wrapper bg-cyan">
+          <i class="fa-solid fa-bolt"></i>
+        </div>
+        <div class="stat-content">
+          <span class="stat-label">Avg Response Latency</span>
+          <h2 class="stat-value" id="statAvgLatency">-- ms</h2>
+          <span class="stat-meta text-cyan"><i class="fa-solid fa-gauge-high"></i> Across all routes</span>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon-wrapper bg-rose">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+        <div class="stat-content">
+          <span class="stat-label">Active Incidents</span>
+          <h2 class="stat-value" id="statIncidents">0</h2>
+          <span class="stat-meta text-muted" id="statIncidentsMeta">Alert threshold: 3 failures</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- MAIN DASHBOARD CONTENT -->
+    <main class="main-content">
+      <!-- TABS NAVIGATION -->
+      <div class="tabs-header">
+        <div class="tabs-list">
+          <button class="tab-btn active" data-tab="sites">
+            <i class="fa-solid fa-server"></i>
+            <span>Monitored Websites</span>
+            <span class="badge" id="badgeSiteCount">9</span>
+          </button>
+          <button class="tab-btn" data-tab="logs">
+            <i class="fa-solid fa-list-check"></i>
+            <span>Live Log Monitoring</span>
+            <span class="badge badge-accent" id="badgeLogCount">0</span>
+          </button>
+          <button class="tab-btn" data-tab="incidents">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+            <span>Incident History</span>
+          </button>
+        </div>
+
+        <div class="tab-actions">
+          <div class="search-box">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" id="searchInput" placeholder="Filter sites or logs...">
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: SITES GRID -->
+      <div class="tab-pane active" id="tab-sites">
+        <div class="sites-grid" id="sitesContainer">
+          <!-- Populated dynamically via app.js -->
+        </div>
+      </div>
+
+      <!-- TAB: LIVE LOG MONITORING -->
+      <div class="tab-pane" id="tab-logs">
+        <div class="logs-wrapper card-glass">
+          <div class="logs-toolbar">
+            <div class="logs-filters">
+              <select id="logFilterSite" class="form-select">
+                <option value="">All Websites</option>
+              </select>
+              <select id="logFilterStatus" class="form-select">
+                <option value="">All Statuses</option>
+                <option value="UP">✅ UP (HTTP 2xx/3xx)</option>
+                <option value="DOWN">🚨 DOWN / Errors</option>
+              </select>
+            </div>
+            <div class="logs-actions">
+              <button class="btn btn-sm btn-outline" id="btnRefreshLogs">
+                <i class="fa-solid fa-arrows-rotate"></i> Refresh
+              </button>
+              <button class="btn btn-sm btn-outline" id="btnExportLogs">
+                <i class="fa-solid fa-file-csv"></i> Export CSV
+              </button>
+              <button class="btn btn-sm btn-danger-outline" id="btnClearLogs">
+                <i class="fa-solid fa-trash"></i> Clear Logs
+              </button>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="logs-table">
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>Website</th>
+                  <th>Monitored Route</th>
+                  <th>HTTP Code</th>
+                  <th>Latency</th>
+                  <th>Status</th>
+                  <th>Message / Error</th>
+                </tr>
+              </thead>
+              <tbody id="logsTableBody">
+                <tr>
+                  <td colspan="7" class="text-center text-muted py-4">Loading inspection logs...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: INCIDENTS -->
+      <div class="tab-pane" id="tab-incidents">
+        <div class="card-glass p-4">
+          <h3 class="pane-title"><i class="fa-solid fa-triangle-exclamation text-rose"></i> Detected Outages & Recoveries</h3>
+          <div class="incidents-list" id="incidentsContainer">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- MODAL: ADD / EDIT WEBSITE -->
+  <div class="modal-overlay" id="siteModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modalSiteTitle"><i class="fa-solid fa-globe"></i> Add Monitored Website</h3>
+        <button class="modal-close" onclick="closeModal('siteModal')">&times;</button>
+      </div>
+      <form id="siteForm">
+        <input type="hidden" id="siteId">
+        
+        <div class="form-group">
+          <label for="siteName">Website Friendly Name <span class="req">*</span></label>
+          <input type="text" id="siteName" class="form-input" placeholder="e.g. My Site" required>
+        </div>
+
+        <div class="form-group">
+          <label for="siteBaseUrl">Base URL <span class="req">*</span></label>
+          <input type="url" id="siteBaseUrl" class="form-input" placeholder="https://www.example.com" required>
+        </div>
+
+        <!-- SUBPAGES LIST (MINIMUM 3 PAGES) -->
+        <div class="form-group">
+          <div class="d-flex justify-between align-center mb-2">
+            <label class="mb-0">Monitored Subpages / Endpoints (Min 3 recommended)</label>
+            <button type="button" class="btn btn-xs btn-outline" id="btnAddPageRow">
+              <i class="fa-solid fa-plus"></i> Add Subpage
+            </button>
+          </div>
+          <div class="pages-list" id="pagesInputList">
+            <!-- Dynamically injected rows -->
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group col-6">
+            <label for="siteInterval">Check Frequency</label>
+            <select id="siteInterval" class="form-select">
+              <option value="1">Every 1 Minute</option>
+              <option value="2">Every 2 Minutes</option>
+              <option value="5" selected>Every 5 Minutes (Default)</option>
+              <option value="10">Every 10 Minutes</option>
+              <option value="15">Every 15 Minutes</option>
+              <option value="30">Every 30 Minutes</option>
+            </select>
+          </div>
+
+          <div class="form-group col-6">
+            <label for="siteThreshold">Consecutive Failure Threshold</label>
+            <input type="number" id="siteThreshold" class="form-input" min="1" max="10" value="3" required>
+            <span class="form-hint">Alert triggers after N consecutive down cycles.</span>
+          </div>
+        </div>
+
+        <!-- NOTIFICATION CHANNEL CHECKBOXES -->
+        <div class="form-group">
+          <label>Alert Channels for this Site</label>
+          <div class="channels-checkboxes">
+            <label class="checkbox-label">
+              <input type="checkbox" id="chanTelegram" checked>
+              <span class="custom-checkbox"></span>
+              <i class="fa-brands fa-telegram text-blue"></i> Telegram
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="chanEmail" checked>
+              <span class="custom-checkbox"></span>
+              <i class="fa-solid fa-envelope text-amber"></i> Email (SMTP)
+            </label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="chanWhatsapp" checked>
+              <span class="custom-checkbox"></span>
+              <i class="fa-brands fa-whatsapp text-emerald"></i> WhatsApp
+            </label>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn btn-outline" onclick="closeModal('siteModal')">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="btnSaveSite">Save Website</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: ALERT NOTIFICATION & SECURITY SETTINGS -->
+  <div class="modal-overlay" id="settingsModal">
+    <div class="modal-card modal-lg">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-sliders text-accent"></i> Settings & Alert Channels</h3>
+        <button class="modal-close" onclick="closeModal('settingsModal')">&times;</button>
+      </div>
+
+      <div class="settings-tabs">
+        <!-- 0. SECURITY & PASSWORD -->
+        <div class="channel-card">
+          <div class="channel-header">
+            <div class="channel-title">
+              <i class="fa-solid fa-key fa-2x text-blue"></i>
+              <div>
+                <h4>Dashboard Login Credentials</h4>
+                <p class="channel-sub">Change your admin ID and password for accessing PulseGuard.</p>
+              </div>
+            </div>
+          </div>
+          <div class="channel-body">
+            <div class="form-row">
+              <div class="form-group col-4">
+                <label>Current Password</label>
+                <input type="password" id="authCurrPass" class="form-input" placeholder="Current Password">
+              </div>
+              <div class="form-group col-4">
+                <label>New Username</label>
+                <input type="text" id="authNewUser" class="form-input" placeholder="admin">
+              </div>
+              <div class="form-group col-4">
+                <label>New Password</label>
+                <input type="password" id="authNewPass" class="form-input" placeholder="New Password">
+              </div>
+            </div>
+            <div class="d-flex justify-end">
+              <button type="button" class="btn btn-sm btn-outline" id="btnChangePassword">
+                <i class="fa-solid fa-shield-halved"></i> Update Credentials
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 1. TELEGRAM SETTINGS -->
+        <div class="channel-card">
+          <div class="channel-header">
+            <div class="channel-title">
+              <i class="fa-brands fa-telegram fa-2x text-blue"></i>
+              <div>
+                <h4>Telegram Bot Alerts</h4>
+                <p class="channel-sub">Instant push notifications directly to your Telegram chat or group.</p>
+              </div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="settTgEnabled">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="channel-body">
+            <div class="form-row">
+              <div class="form-group col-6">
+                <label>Telegram Bot Token</label>
+                <input type="text" id="settTgToken" class="form-input" placeholder="e.g. 123456789:ABCdefGhIJKlmNoPQR">
+                <span class="form-hint">Obtain from <a href="https://t.me/BotFather" target="_blank">@BotFather</a></span>
+              </div>
+              <div class="form-group col-6">
+                <label>Telegram Chat ID</label>
+                <input type="text" id="settTgChatId" class="form-input" placeholder="e.g. 987654321 or -100xxxxxxxx">
+                <span class="form-hint">Get from <a href="https://t.me/userinfobot" target="_blank">@userinfobot</a></span>
+              </div>
+            </div>
+            <div class="d-flex justify-end">
+              <button type="button" class="btn btn-sm btn-outline" onclick="testChannel('telegram')">
+                <i class="fa-solid fa-paper-plane"></i> Test Telegram Alert
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. EMAIL (SMTP) SETTINGS -->
+        <div class="channel-card">
+          <div class="channel-header">
+            <div class="channel-title">
+              <i class="fa-solid fa-envelope fa-2x text-amber"></i>
+              <div>
+                <h4>Email Alerts (SMTP)</h4>
+                <p class="channel-sub">Sends formatted HTML alerts with error breakdowns.</p>
+              </div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="settEmailEnabled">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="channel-body">
+            <div class="form-row">
+              <div class="form-group col-6">
+                <label>SMTP Host</label>
+                <input type="text" id="settSmtpHost" class="form-input" placeholder="smtp.gmail.com or smtp.hostinger.com">
+              </div>
+              <div class="form-group col-3">
+                <label>SMTP Port</label>
+                <input type="number" id="settSmtpPort" class="form-input" value="587">
+              </div>
+              <div class="form-group col-3">
+                <label>SSL/TLS</label>
+                <select id="settSmtpSecure" class="form-select">
+                  <option value="false">STARTTLS (587)</option>
+                  <option value="true">SSL (465)</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group col-6">
+                <label>SMTP Username / Email</label>
+                <input type="text" id="settSmtpUser" class="form-input" placeholder="alerts@domain.com">
+              </div>
+              <div class="form-group col-6">
+                <label>SMTP Password / App Password</label>
+                <input type="password" id="settSmtpPass" class="form-input" placeholder="••••••••••••••••">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Alert Recipient Email (To:)</label>
+              <input type="email" id="settEmailTo" class="form-input" placeholder="your-personal@email.com">
+            </div>
+            <div class="d-flex justify-end">
+              <button type="button" class="btn btn-sm btn-outline" onclick="testChannel('email')">
+                <i class="fa-solid fa-paper-plane"></i> Test Email Alert
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. WHATSAPP SETTINGS -->
+        <div class="channel-card">
+          <div class="channel-header">
+            <div class="channel-title">
+              <i class="fa-brands fa-whatsapp fa-2x text-emerald"></i>
+              <div>
+                <h4>WhatsApp Alerts (CallMeBot / Webhook)</h4>
+                <p class="channel-sub">Instant WhatsApp messages via CallMeBot API or custom webhook.</p>
+              </div>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="settWaEnabled">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="channel-body">
+            <div class="form-row">
+              <div class="form-group col-6">
+                <label>Provider</label>
+                <select id="settWaProvider" class="form-select" onchange="toggleWaProvider(this.value)">
+                  <option value="callmebot" selected>CallMeBot API (Easiest & Free)</option>
+                  <option value="webhook">Custom Webhook / UltraMsg / Twilio</option>
+                </select>
+              </div>
+              <div class="form-group col-6" id="waPhoneGroup">
+                <label>Phone Number (with Country Code)</label>
+                <input type="text" id="settWaPhone" class="form-input" placeholder="+919876543210">
+              </div>
+            </div>
+            <div class="form-group" id="waApiKeyGroup">
+              <label>CallMeBot API Key</label>
+              <input type="text" id="settWaApiKey" class="form-input" placeholder="Obtain from callmebot.com via WhatsApp message">
+              <span class="form-hint">Send <code>I allow callmebot to send me messages</code> to <code>+34 941 070 123</code> on WhatsApp to get API Key.</span>
+            </div>
+            <div class="form-group" id="waWebhookGroup" style="display:none;">
+              <label>Custom Webhook URL</label>
+              <input type="url" id="settWaWebhookUrl" class="form-input" placeholder="https://your-custom-webhook-endpoint.com/send">
+            </div>
+            <div class="d-flex justify-end">
+              <button type="button" class="btn btn-sm btn-outline" onclick="testChannel('whatsapp')">
+                <i class="fa-solid fa-paper-plane"></i> Test WhatsApp Alert
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn btn-outline" onclick="closeModal('settingsModal')">Close</button>
+        <button type="button" class="btn btn-primary" id="btnSaveSettings">Save All Settings</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="app.js?v=3.0"></script>
+</body>
+</html>
